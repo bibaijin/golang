@@ -7,15 +7,15 @@ import (
 	"github.com/golang/glog"
 )
 
-type RunningConn struct {
+type RunConn struct {
 	InComing chan string
 	OutGoing chan string
 	reader   *bufio.Reader
 	writer   *bufio.Writer
 }
 
-func NewRunningConn(conn net.Conn) *RunningConn {
-	rc := &RunningConn{
+func NewRunConn(conn net.Conn) *RunConn {
+	rc := &RunConn{
 		InComing: make(chan string),
 		OutGoing: make(chan string),
 		reader:   bufio.NewReader(conn),
@@ -27,31 +27,34 @@ func NewRunningConn(conn net.Conn) *RunningConn {
 	return rc
 }
 
-func (rc *RunningConn) run() {
+func (rc *RunConn) run() {
 	go rc.write()
 	go rc.read()
 }
 
-func (rc *RunningConn) write() {
+func (rc *RunConn) write() {
 	for data := range rc.OutGoing {
 		if _, err := rc.writer.WriteString(data); err != nil {
-			glog.Error(err.Error())
+			glog.Errorf("write >> WriteString: %s", err.Error())
+			close(rc.OutGoing)
 			return
 		}
 		if err := rc.writer.Flush(); err != nil {
-			glog.Error(err.Error())
+			glog.Errorf("write >> Flush: %s", err.Error())
+			close(rc.OutGoing)
 			return
 		}
 	}
 }
 
-func (rc *RunningConn) read() {
+func (rc *RunConn) read() {
 	var line string
 	var err error
 	for {
 		if line, err = rc.reader.ReadString('\n'); err != nil {
-			glog.Error(err.Error())
-			break
+			glog.Errorf("read >> ReadString: %s", err.Error())
+			close(rc.InComing)
+			return
 		}
 		rc.InComing <- line
 	}

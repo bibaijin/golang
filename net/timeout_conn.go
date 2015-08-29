@@ -41,3 +41,15 @@ func (tc TimeoutConn) LocalAddr() net.Addr {
 func (tc TimeoutConn) RemoteAddr() net.Addr {
 	return tc.conn.RemoteAddr()
 }
+
+func (tc TimeoutConn) SetDeadline(t time.Time) error {
+	return tc.conn.SetDeadline(t)
+}
+
+func (tc TimeoutConn) SetReadDeadline(t time.Time) error {
+	return tc.conn.SetReadDeadline(t)
+}
+
+func (tc TimeoutConn) SetWriteDeadline(t time.Time) error {
+	return tc.conn.SetWriteDeadline(t)
+}
