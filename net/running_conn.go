@@ -14,12 +14,12 @@ type RunConn struct {
 	writer   *bufio.Writer
 }
 
-func NewRunConn(conn net.Conn) *RunConn {
+func NewRunConn(conn net.Conn, size int) *RunConn {
 	rc := &RunConn{
 		InComing: make(chan string),
 		OutGoing: make(chan string),
-		reader:   bufio.NewReader(conn),
-		writer:   bufio.NewWriter(conn),
+		reader:   bufio.NewReaderSize(conn, size),
+		writer:   bufio.NewWriterSize(conn, size),
 	}
 
 	rc.run()
@@ -52,7 +52,7 @@ func (rc *RunConn) read() {
 	var err error
 	for {
 		if line, err = rc.reader.ReadString('\n'); err != nil {
-			glog.Errorf("read >> ReadString: %s", err.Error())
+			// glog.Errorf("read >> ReadString: %s", err.Error())
 			close(rc.InComing)
 			return
 		}
