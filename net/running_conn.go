@@ -1,25 +1,23 @@
 package net
 
 import (
-	"bufio"
+	"io"
 	"net"
 
 	"github.com/golang/glog"
 )
 
 type RunConn struct {
-	InComing chan string
-	OutGoing chan string
-	reader   *bufio.Reader
-	writer   *bufio.Writer
+	InComing chan []byte
+	OutGoing chan []byte
+	conn     net.Conn
 }
 
-func NewRunConn(conn net.Conn, size int) *RunConn {
+func NewRunConn(conn net.Conn) *RunConn {
 	rc := &RunConn{
-		InComing: make(chan string),
-		OutGoing: make(chan string),
-		reader:   bufio.NewReaderSize(conn, size),
-		writer:   bufio.NewWriterSize(conn, size),
+		InComing: make(chan []byte),
+		OutGoing: make(chan []byte),
+		conn:     conn,
 	}
 
 	rc.run()
@@ -34,13 +32,8 @@ func (rc *RunConn) run() {
 
 func (rc *RunConn) write() {
 	for data := range rc.OutGoing {
-		if _, err := rc.writer.WriteString(data); err != nil {
+		if _, err := rc.conn.Write(data); err != nil {
 			glog.Errorf("write >> WriteString: %s", err.Error())
-			close(rc.OutGoing)
-			return
-		}
-		if err := rc.writer.Flush(); err != nil {
-			glog.Errorf("write >> Flush: %s", err.Error())
 			close(rc.OutGoing)
 			return
 		}
@@ -48,14 +41,16 @@ func (rc *RunConn) write() {
 }
 
 func (rc *RunConn) read() {
-	var line string
-	var err error
+	tmp := make([]byte, 256)
 	for {
-		if line, err = rc.reader.ReadString('\n'); err != nil {
+		if _, err := rc.conn.Read(tmp); err != nil {
 			// glog.Errorf("read >> ReadString: %s", err.Error())
+			if err != io.EOF {
+				glog.Error(err.Error())
+			}
 			close(rc.InComing)
 			return
 		}
-		rc.InComing <- line
+		rc.InComing <- tmp
 	}
 }
